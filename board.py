@@ -19,10 +19,12 @@ class SafariBoard:
         self._empty_cell = None
         self._animal_types = self.create_animals(animals)
         self._board = self.create_safari_board()
-        self._chosen_cell_idx = None
+        self._chosen_cell_x = 0
+        self._chosen_cell_y = 0
+        self._chosen_animal = None
 
     def create_animals(self, animals: dict):
-        self._empty_cell = self.Animal(name='-', domination_level=0)
+        self._empty_cell = self.Animal(name='-', domination_level=65536)
         _animal_types = []
         for name, domination_level in animals.items():
             animal = self.Animal(name=name, domination_level=domination_level)
@@ -33,57 +35,53 @@ class SafariBoard:
         _board = []
         _animal_types = len(self._animal_types)
         for _y in range(self._height):
+            _row = []
             for _x in range(self._width):
-                _board.append(self._animal_types[random.randrange(_animal_types)])
+                _row.append(self._animal_types[random.randrange(_animal_types)])
+            _board.append(_row)
         return _board
 
     def show(self):
         for _y in range(self._height):
-            row = ' '.join([_animal.symbol
-                            for _animal in self._board[_y * self._width: _y * self._width + self._width]])
+            row = ' '.join([_animal.symbol for _animal in self._board[_y]])
             print(row)
 
     def select_random_cell(self):
-        self._chosen_cell_idx = random.randrange(len(self._board))
-        # self._chosen_cell = self._board[_rand_cell_num]
-        print(f'Chosen cell: ['
-              f'{self._chosen_cell_idx % self._width},'
-              f'{self._chosen_cell_idx // self._width}]: '
-              f'{self._board[self._chosen_cell_idx]}')
+        self._chosen_cell_x = random.randrange(self._width)
+        self._chosen_cell_y = random.randrange(self._height)
+        self._chosen_animal = self._board[self._chosen_cell_y][self._chosen_cell_x]
+        print(f'Chosen cell: '
+              f'[{self._chosen_cell_y + 1},{self._chosen_cell_x + 1}]: '
+              f'{self._chosen_animal.symbol}')
 
     def dominate(self):
-        _cell_coords_x = (-1, 0, 1)
-        _cell_coords_y = (-self._width, 0, self._width)
+        _working_area_cells = (-1, 0, 1)
 
-        def conquer_cells_around(_cell_idx):
-            for _y_cell in _cell_coords_y:
-                for _x_cell in _cell_coords_x:
-                    _next_cell_idx = _cell_idx + _y_cell + _x_cell
-                    if not (0 <= _next_cell_idx < len(self._board)):
+        def conquer_cells_around(_cell_x_idx: int, _cell_y_idx: int) -> None:
+            self._board[_cell_y_idx][_cell_x_idx] = self._empty_cell
+            for _y_cell in _working_area_cells:
+                for _x_cell in _working_area_cells:
+                    _x_cell_to_check = _cell_x_idx + _x_cell
+                    _y_cell_to_check = _cell_y_idx + _y_cell
+
+                    if not (0 <= _x_cell_to_check < self._width):
                         continue
-                    _row_num = _cell_idx % self._width
-                    _next_row_diff = _cell_idx - _next_cell_idx
-                    print(f'{_row_num=} {_next_row_diff=}')
-                    if (_row_num - _next_row_diff) < 0 or (_row_num + _next_row_diff) >= self._width:
+
+                    if not (0 <= _y_cell_to_check < self._height):
                         continue
-                    if self._board[_next_cell_idx].domination_level == 0:
-                        continue
-                    if self._board[_next_cell_idx].domination_level \
-                            < self._board[self._chosen_cell_idx].domination_level:
-                        self._board[_next_cell_idx] = self._empty_cell
-                        # print(_cell_index)
-                        conquer_cells_around(_next_cell_idx)
-                        # row.append(self._board[_cell_index].symbol)
-                    # else:
-                    #     row.append(' ')
-                # print(row)
 
-        conquer_cells_around(self._chosen_cell_idx)
+                    if self._board[_y_cell_to_check][_x_cell_to_check].domination_level \
+                            < self._chosen_animal.domination_level:
+                        self._board[_y_cell_to_check][_x_cell_to_check] = self._empty_cell
+                        conquer_cells_around(_x_cell_to_check, _y_cell_to_check)
+
+        conquer_cells_around(self._chosen_cell_x, self._chosen_cell_y)
 
 
-animals = {'Lion': 4, 'Tiger': 3, 'Wolf': 2, 'Deer': 1}
-safari_board = SafariBoard(width=5, height=5, animals=animals)
-safari_board.show()
-safari_board.select_random_cell()
-safari_board.dominate()
-safari_board.show()
+if __name__ == '__main__':
+    animals = {'Lion': 3, 'Tiger': 2, 'Wolf': 1, 'Deer': 0}
+    safari_board = SafariBoard(width=10, height=10, animals=animals)
+    safari_board.show()
+    safari_board.select_random_cell()
+    safari_board.dominate()
+    safari_board.show()
